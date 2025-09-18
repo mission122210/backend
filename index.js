@@ -38,23 +38,30 @@ io.on("connection", (socket) => {
     socket.emit("identity_ok", { username: name });
   });
 
-  socket.on("send_message", ({ to, text }) => {
+  socket.on("send_message", ({ to, text, image }) => {
     const user = users[socket.id];
-    if (!user || !to || !text) return;
-
+    if (!user || !to || (!text && !image)) return;
+  
     const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const msg = { from: user.username, to, text, time };
-
+    const msg = {
+      from: user.username,
+      to,
+      text: text || "",
+      image: image || null, // accept base64 image
+      time,
+    };
+  
     const receiver = Object.entries(users)
       .find(([_, u]) => u.username === to)?.[0];
-
+  
     if (receiver) {
       io.to(receiver).emit("receive_message", msg);
-      socket.emit("receive_message", msg);
+      socket.emit("receive_message", msg); // echo back to sender
     } else {
       socket.emit("send_error", "Recipient not found");
     }
   });
+  
 
   socket.on("typing", ({ to }) => {
     emitTypingEvent(socket, to, "typing");
